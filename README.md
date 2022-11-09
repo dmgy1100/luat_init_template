@@ -1,0 +1,2 @@
+# luat_init_template
+一个mcu为air724的模板项目
