@@ -74,6 +74,9 @@ require "sim"
 require "lbsLoc"
 require "pmd"
 require "adc"
+
+--加载自己写的模块
+require "btn"
 --启动系统框架
 sys.init(0, 0)
 sys.run()

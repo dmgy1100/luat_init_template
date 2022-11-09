@@ -1,4 +1,4 @@
-module(..., package.seeall)
+module(..., package.seeall)                                         --将次文件定义为模块，可以通过require导入
 
 local key_down_times = 1
 local key_timer = nil
