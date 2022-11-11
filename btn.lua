@@ -25,57 +25,40 @@ local function keyMsg(msg)
 end
 rtos.on(rtos.MSG_KEYPAD, keyMsg)                                        --初始化矩阵键盘
 rtos.init_module(rtos.MOD_KEYPAD,0,0x3c,0x0F)                           --设置矩阵键盘模式
-
-
-btn_name = pins.setup(gpio, btn_cb, pio.PULLUP)            --初始化按键gpio,初始化为拉高
---按键中断回调函数
-function btn_cb(msg)
-    if msg == cpu.INT_GPIO_POSEDGE then
-        --上升沿
-    elseif msg == cpu.INT_GPIO_NEGEDGE then
-        --下降沿
-    end
-end
+--按键检测
+local CLICK = 1
+local DOUBLE_CLICK = 2
+local LONG_PRESS = 3
+--定义按键结构体
+local button = {
+    button_init_callback = nil,
+    button_event_callback = nil
+}
 --长按判断定时器
-function key_loop_timer(key)
+function key_loop_timer(button)
     key_power_times = key_power_times + 1
     if key_power_times >= 3 then                     --长按开关机
         if key_timer ~= nil then
             sys.timerStop(key_timer)
             key_timer = nil
         end
-        key_event(key, 3)
+        button.button_event_callback(LONG_PRESS)
     end
-    log.info("button","定时器检测",key_power_times)
 end
---单击判断定时器
-function key_one_timer(key)
-    if key_power_count == 2 then                    --电源键双击
-        key_event(key, 2)
+--单双击判断定时器
+function key_one_timer(button)
+    if key_power_count == 2 then                    --双击
+        button.button_event_callback(DOUBLE_CLICK)
         key_power_count = 0
     elseif key_power_count == 1 then
-        key_event(key, 1)
+        button.button_event_callback(CLICK)
         key_power_count = 0
     else
         key_power_count = 0
     end 
 end
---按键status,1：单击；2 ：双击；3；长按
---处理按键事件
-function key_event(key, status)
-    if key == key_name then
-        if status == 1 then                     
-            --单击操作
-        elseif status == 2 then
-            --双击操作
-        elseif status == 3 then
-            --长按操作
-        end
-    end
-end
 --生成按键事件
-function create_key_event(key, status)
-    --log.info("button","生成按键事件")
+function create_key_event(button, status)
     if status == 0 then
         if key_timer ~= nil then
             sys.timerStop(key_timer)
@@ -83,7 +66,7 @@ function create_key_event(key, status)
         end
         if key_down_times < 2 then
             if key_power_count == 0 then
-                sys.timerStart(key_one_timer, 1000, key)
+                sys.timerStart(key_one_timer, 1000, button)
             end
             key_power_count = key_power_count + 1
         else
@@ -91,7 +74,37 @@ function create_key_event(key, status)
         end
     elseif status == 1 then
         if key_timer == nil then
-            key_timer = sys.timerLoopStart(key_loop_timer, 1000, key)
+            key_timer = sys.timerLoopStart(key_loop_timer, 1000, button_name)
         end
+    end
+end
+--使用例子
+--按键中断回调函数
+function btn_cb(msg)
+    if msg == cpu.INT_GPIO_POSEDGE then
+        --上升沿
+        create_key_event(button, 1)
+    elseif msg == cpu.INT_GPIO_NEGEDGE then
+        --下降沿
+        create_key_event(button, 0)
+    end
+end
+function test_button_callback(status)
+    --处理按键事件
+    if status == CLICK then                         --按键单击事件
+        
+    elseif status == DOUBLE_CLICK then              --按键双击事件
+
+    elseif status == LONG_PRESS then                --按键长按
+
+    end
+end
+local button = {}                                   --定义按键
+button.button_init_callback = btn_cb                
+button.button_event_callback = test_button_callback
+--按键初始化
+function button_init(button)
+    if button.button_init_callback ~= nil and button.button_event_callback ~= nil then
+        btn_name = pins.setup(gpio, button.button_init_callback, pio.PULLUP)            --初始化按键gpio,初始化为拉高
     end
 end
