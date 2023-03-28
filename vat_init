@@ -1,0 +1,29 @@
+--VAT是否打开 "1" 开 ,"0" 关
+local flag_enatc = "1" 
+-- 串口ID,串口读缓冲区
+local  recvQueue =  {}
+-- 串口超时，串口准备好后发布的消息
+local uartimeout, recvReady,RECV_MAXCNT = 100, "UART_RECV_ID",1024
+
+--向PC 写入数据，目的是将AT指令的返回数据呈现给电脑一方
+local function usb_write(data)
+    uart.write(uart.USB, data) 
+end
+
+--配置USB 的虚拟串口
+uart.setup(uart.USB, 0, 0, uart.PAR_NONE, uart.STOP_1)
+uart.on(uart.USB, "receive", function()
+    table.insert(recvQueue, uart.read(uart.USB, RECV_MAXCNT))
+    sys.timerStart(sys.publish, uartimeout, recvReady)
+end)
+--处理PC 发过来的AT 指令
+function app_procmd(str_recv)
+    log.info("str_recv------------",str_recv)
+    --usb_write("receive"..str_recv)
+end
+--将从VAT 串口收到的内容进行拼接
+sys.subscribe(recvReady, function()
+    local str_recv = table.concat(recvQueue)
+    recvQueue = {}
+    app_procmd(str_recv)
+end)
